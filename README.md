@@ -1,6 +1,6 @@
 # @sdkwork/backend-sdk
 
-> SDKWork Backend SDK - 专业级 TypeScript SDK，服务端 API 集成方案
+> SDKwork Backend SDK - 专业级TypeScript SDK，服务端API集成方案
 
 ## 📦 安装
 
@@ -14,70 +14,153 @@ pnpm add @sdkwork/backend-sdk
 
 ## 🚀 快速开始
 
-### 双 Token 模式（默认）
+### 双Token模式（默认）
 
-Backend SDK 默认采用双 Token 认证方式，支持从环境变量自动读取 `accessToken`：
+Backend SDK默认采用双Token认证模式，创建客户端时传入Token管理器：
 
 ```typescript
-import { createClient } from '@sdkwork/backend-sdk';
+import { createClient, createTokenManager } from '@sdkwork/backend-sdk';
 
-// 自动从环境变量读取 accessToken
-const client = createClient({
-  baseUrl: 'https://api.sdkwork.com',
+// 创建Token管理器
+const tokenManager = createTokenManager({
+  accessToken: 'your-access-token',  // 服务端标识
+}, {
+  onTokenRefresh: (tokens) => {
+    console.log('Token已刷新:', tokens);
+  },
 });
 
-// 或手动指定 accessToken
+// 创建客户端时传入tokenManager
 const client = createClient({
   baseUrl: 'https://api.sdkwork.com',
-  accessToken: 'your-access-token',
+  tokenManager,
 });
 
-// 登录后设置 authToken
+// 登录后设置authToken
 const loginResponse = await client.auth.login({
   username: 'admin@example.com',
   password: 'password123',
 });
-client.setAuthToken(loginResponse.authToken);
+tokenManager.setAuthToken(loginResponse.authToken);
 
 // 请求头:
 //   Access-Token: {accessToken}
 //   Authorization: Bearer {authToken}
 ```
 
-### API Key 模式
-
-如需使用 API Key 模式：
+### APIKEY模式
 
 ```typescript
 import { createClient } from '@sdkwork/backend-sdk';
 
 const client = createClient({
   baseUrl: 'https://api.sdkwork.com',
+  authMode: 'apikey',
   apiKey: 'your-api-key',
 });
 
 // 请求头: Authorization: Bearer {apiKey}
 ```
 
+### 模式切换
+
+```typescript
+// 从双Token切换到APIKEY模式
+client.setApiKey('new-api-key');
+
+// 从APIKEY切换到双Token模式
+client.setAccessToken('access-token');
+client.setAuthToken('auth-token');
+```
+
 ## 📚 模块列表
 
 | 模块 | 描述 |
 |------|------|
-| `auth` | 认证管理 - 登录、注册、Token 刷新 |
-| `user` | 用户管理 - 用户列表、资料、地址、OAuth 账号 |
-| `chat` | AI 聊天 - 会话、消息，流式输出 |
-| `generation` | 内容生成 - 图片、视频、音频、角色 |
-| `trade` | 交易订单 - 订单、支付、退款、购物车 |
-| `model` | AI 模型 - 模型管理、定价 |
-| `file` | 文件管理 - 上传、存储、OSS 桶 |
+| `auth` | 认证 - 登录、注册、登出 |
+| `user` | 用户管理 - 用户列表、资料、地址、OAuth |
+| `chat` | AI聊天 - 会话、消息、流式输出 |
+| `conversation` | 会话管理 |
+| `chatMessage` | 消息管理 |
+| `generation` | 内容生成 - 图片、视频、音频 |
+| `imageGeneration` | 图片生成 |
+| `videoGeneration` | 视频生成 |
+| `musicGeneration` | 音乐生成 |
+| `audioGeneration` | 音频生成 |
+| `characterGeneration` | 角色生成 |
+| `order` | 订单 - 创建、列表、管理 |
+| `payment` | 支付 - 创建、查询、状态 |
+| `refund` | 退款 - 申请、列表 |
+| `shoppingCart` | 购物车 |
+| `model` | AI模型 - 列表、搜索、定价 |
+| `file` | 文件管理 - 上传、存储 |
+| `disk` | 磁盘管理 |
+| `ossBucket` | OSS桶管理 |
 | `knowledge` | 知识库 - 向量知识库、语义搜索 |
-| `agent` | AI Agent - Agent 管理、对话 |
+| `agent` | AI Agent - 管理、对话 |
 | `tool` | 工具管理 - 自定义工具注册与执行 |
 | `prompt` | 提示词 - 模板管理与渲染 |
-| `workspace` | 工作空间 - 团队协作、项目管理 |
-| `vip` | VIP 会员 - 等级、权益、套餐 |
+| `workspace` | 工作空间 - 团队协作 |
+| `project` | 项目管理 |
+| `vip` | VIP会员 - 等级、权益 |
+| `vipLevel` | VIP等级 |
+| `vipUser` | VIP用户 |
+| `vipBenefit` | VIP权益 |
+| `vipPack` | VIP套餐 |
 
-## 📖 API 参考
+## 🔐 认证详解
+
+### 双Token认证流程
+
+```
+1. 创建客户端 → 设置tokenManager（包含accessToken）
+2. 用户登录 → 获取authToken（用户认证token）
+3. 设置authToken → 完成认证
+4. 请求API → 自动携带双Token
+```
+
+### Token说明
+
+| Token | 设置时机 | 用途 | Header |
+|-------|---------|------|--------|
+| `accessToken` | 创建客户端时 | 服务端标识 | `Access-Token` |
+| `authToken` | 登录后 | 用户认证 | `Authorization: Bearer` |
+| `refreshToken` | 登录后 | 刷新Token | - |
+
+### TokenManager
+
+```typescript
+import { createTokenManager } from '@sdkwork/backend-sdk';
+
+const tokenManager = createTokenManager({
+  accessToken: 'your-access-token',
+  authToken: 'your-auth-token',
+  refreshToken: 'your-refresh-token',
+  expiresIn: 7200,
+}, {
+  onTokenRefresh: (tokens) => console.log('刷新:', tokens),
+  onTokenExpired: () => console.log('过期'),
+  onTokenCleared: () => console.log('已清除'),
+  onTokenSet: (tokens) => console.log('已设置:', tokens),
+  onTokenInvalid: () => console.log('无效'),
+});
+
+// 管理方法
+tokenManager.getAccessToken();
+tokenManager.getAuthToken();
+tokenManager.getRefreshToken();
+tokenManager.setTokens({ authToken: 'new-token' });
+tokenManager.setAuthToken('new-auth-token');
+tokenManager.clearAuthToken();
+
+// 状态检查
+tokenManager.isExpired();
+tokenManager.isValid();
+tokenManager.hasAuthToken();
+tokenManager.willExpireIn(300);
+```
+
+## 📖 API参考
 
 ### 认证模块
 
@@ -87,9 +170,9 @@ const loginResponse = await client.auth.login({
   username: 'admin@example.com',
   password: 'password123',
 });
-client.setAuthToken(loginResponse.authToken);
+client.getTokenManager()?.setAuthToken(loginResponse.authToken);
 
-// 刷新 Token
+// 刷新Token
 const refreshed = await client.auth.refreshToken({
   refreshToken: loginResponse.refreshToken,
 });
@@ -113,10 +196,10 @@ if (client.isAuthenticated()) {
 ### 用户模块
 
 ```typescript
-// 获取用户列表
+// 用户列表
 const users = await client.user.listUsers({ page: 1, size: 20 });
 
-// 获取用户详情
+// 用户详情
 const user = await client.user.getUser(123);
 
 // 创建用户
@@ -135,7 +218,7 @@ const updated = await client.user.updateUser(123, {
 // 删除用户
 await client.user.deleteUser(123);
 
-// 用户地址管理
+// 用户地址
 const addresses = await client.userAddress.listUserAddresses(123);
 const address = await client.userAddress.createUserAddress(123, {
   receiver: '张三',
@@ -162,136 +245,26 @@ const message = await client.chat.sendMessage(session.id, {
 });
 
 // 流式消息
-await client.chat.sendMessageStream(session.id, { content: '你好' }, {
-  onChunk: (chunk) => console.log('收到:', chunk),
-  onComplete: () => console.log('完成'),
-  onError: (error) => console.error('错误:', error),
+await client.chat.sendMessageStream(session.id, { content: '你好' }, (chunk) => {
+  console.log('收到:', chunk);
 });
 
-// 获取历史消息
-const messages = await client.chat.getMessageHistory(session.id, {
-  page: 1,
-  size: 50,
-});
-```
-
-### 知识库模块
-
-```typescript
-// 创建知识库
-const kb = await client.knowledge.createKnowledgeBase({
-  name: '产品文档',
-  description: '产品使用文档',
-  embeddingModel: 'text-embedding-3-small',
-  chunkSize: 500,
-});
-
-// 上传知识库文件
-const file = await client.knowledge.uploadKnowledgeFile(kb.id, fileObject);
-
-// 添加网页内容
-await client.knowledge.addWebPage(kb.id, {
-  url: 'https://example.com/doc',
-  title: '产品文档',
-});
-
-// 语义搜索
-const results = await client.knowledge.search(kb.id, {
-  query: '如何开始使用？',
-  topK: 5,
-});
-
-// 获取知识库统计
-const stats = await client.knowledge.getKnowledgeBaseStats(kb.id);
-```
-
-### Agent 模块
-
-```typescript
-// 创建 Agent
-const agent = await client.agent.createAgent({
-  name: '客服助手',
-  description: '处理客户咨询',
-  modelId: 'gpt-4',
-  instructions: '你是一个热情周到的客服人员...',
-  tools: ['search', 'calculator'],
-});
-
-// 与 Agent 对话
-const response = await client.agent.chat(agent.id, {
-  message: '我想咨询产品功能',
-  conversationId: 'conv-123',
-});
-
-// 流式对话
-await client.agent.chatStream(agent.id, { message: '你好' }, {
-  onChunk: (chunk) => process.stdout.write(chunk.content),
-});
-```
-
-### 工具模块
-
-```typescript
-// 注册自定义工具
-const tool = await client.tool.createTool({
-  name: '天气查询',
-  description: '查询指定城市的天气信息',
-  type: 'FUNCTION',
-  schema: {
-    type: 'object',
-    properties: {
-      city: { type: 'string', description: '城市名称' },
-    },
-    required: ['city'],
-  },
-});
-
-// 执行工具
-const result = await client.tool.execute(tool.id, { city: '深圳' });
-
-// 工具列表
-const tools = await client.tool.listTools({ type: 'FUNCTION' });
-```
-
-### 提示词模块
-
-```typescript
-// 创建提示词模板
-const prompt = await client.prompt.createPrompt({
-  name: '翻译助手',
-  content: '请将以下{{source_lang}}翻译成{{target_lang}}:\n{{content}}',
-  variables: ['source_lang', 'target_lang', 'content'],
-});
-
-// 渲染提示词
-const rendered = await client.prompt.render(prompt.id, {
-  source_lang: '中文',
-  target_lang: '英文',
-  content: '今天天气真好',
-});
-
-// 更新提示词
-await client.prompt.updatePrompt(prompt.id, {
-  content: '新模板内容...',
-});
+// 历史消息
+const messages = await client.chat.getMessageHistory(session.id, { page: 1, size: 50 });
 ```
 
 ### 订单模块
 
 ```typescript
-// 创建商品订单
+// 订单列表
+const orders = await client.order.listOrders({ status: 'PENDING', page: 1, size: 20 });
+
+// 创建订单
 const order = await client.order.createGoodsOrder({
   orderType: 'GOODS',
   productId: 'prod-123',
   quantity: 2,
   addressId: 1,
-});
-
-// 订单列表
-const orders = await client.order.listOrders({
-  status: 'PENDING',
-  page: 1,
-  size: 20,
 });
 
 // 确认订单
@@ -317,13 +290,17 @@ const payment = await client.payment.createPayment({
   productType: 'JSAPI',
 });
 
-// 查询支付状态
+// 查询状态
 const status = await client.payment.getPaymentStatus(payment.id);
 
 // 取消支付
 await client.payment.cancelPayment(payment.id);
+```
 
-// 退款申请
+### 退款模块
+
+```typescript
+// 创建退款
 const refund = await client.refund.createRefund({
   orderId: 'order-123',
   refundAmount: 100,
@@ -334,13 +311,91 @@ const refund = await client.refund.createRefund({
 const refunds = await client.refund.listRefunds({ status: 'PROCESSING' });
 ```
 
-### VIP 模块
+### 知识库模块
 
 ```typescript
-// VIP 套餐列表
+// 创建知识库
+const kb = await client.knowledge.createKnowledgeBase({
+  name: '产品文档',
+  description: '产品使用文档',
+  embeddingModel: 'text-embedding-3-small',
+  chunkSize: 500,
+});
+
+// 上传文件
+const file = await client.knowledge.uploadKnowledgeFile(kb.id, fileObject);
+
+// 添加网页
+await client.knowledge.addWebPage(kb.id, {
+  url: 'https://example.com/doc',
+  title: '产品文档',
+});
+
+// 语义搜索
+const results = await client.knowledge.search(kb.id, {
+  query: '如何开始使用？',
+  topK: 5,
+});
+
+// 知识库统计
+const stats = await client.knowledge.getKnowledgeBaseStats(kb.id);
+```
+
+### Agent模块
+
+```typescript
+// 创建Agent
+const agent = await client.agent.createAgent({
+  name: '客服助手',
+  description: '处理客户咨询',
+  modelId: 'gpt-4',
+  instructions: '你是一个热情周到的客服人员...',
+  tools: ['search', 'calculator'],
+});
+
+// Agent对话
+const response = await client.agent.chat(agent.id, {
+  message: '我想咨询产品功能',
+  conversationId: 'conv-123',
+});
+
+// 流式对话
+await client.agent.chatStream(agent.id, { message: '你好' }, (chunk) => {
+  process.stdout.write(chunk.content);
+});
+```
+
+### 工具模块
+
+```typescript
+// 创建工具
+const tool = await client.tool.createTool({
+  name: '天气查询',
+  description: '查询指定城市的天气信息',
+  type: 'FUNCTION',
+  schema: {
+    type: 'object',
+    properties: {
+      city: { type: 'string', description: '城市名称' },
+    },
+    required: ['city'],
+  },
+});
+
+// 执行工具
+const result = await client.tool.execute(tool.id, { city: '深圳' });
+
+// 工具列表
+const tools = await client.tool.listTools({ type: 'FUNCTION' });
+```
+
+### VIP模块
+
+```typescript
+// VIP套餐列表
 const packs = await client.vipPack.listVipPacks();
 
-// 创建 VIP 订单
+// 创建VIP订单
 const vipOrder = await client.vip.createVipOrder({
   packId: 'vip-annual',
   paymentProvider: 'ALIPAY',
@@ -352,7 +407,7 @@ const recharge = await client.vipUser.recharge({
   paymentProvider: 'WECHAT_PAY',
 });
 
-// VIP 权益列表
+// VIP权益
 const benefits = await client.vipBenefit.listBenefits();
 ```
 
@@ -372,10 +427,10 @@ try {
   await client.user.getUser(123);
 } catch (error) {
   if (error instanceof TokenExpiredError) {
-    // Token 过期，需要刷新或重新登录
-    console.log('Token 已过期，请刷新');
+    // Token过期，需要刷新或重新登录
+    console.log('Token已过期，请刷新');
     const refreshed = await client.auth.refreshToken({ refreshToken: '...' });
-    client.setAuthToken(refreshed.authToken);
+    client.getTokenManager()?.setTokens(refreshed);
   } else if (error instanceof AuthenticationError) {
     // 认证失败
     console.log('认证失败:', error.message);
@@ -385,9 +440,8 @@ try {
   } else if (error instanceof RateLimitError) {
     // 限流错误
     console.log('请求过于频繁，请稍后重试');
-    console.log('重试时间:', error.retryAfter);
   } else if (error instanceof SdkworkError) {
-    // SDK 错误
+    // SDK错误
     console.log('SDK错误:', error.code, error.message);
   }
 }
@@ -397,20 +451,17 @@ try {
 
 ```typescript
 interface SdkworkConfig {
-  baseUrl: string;                    // API 基础 URL（必填）
+  baseUrl: string;                    // API基础URL（必填）
+  authMode?: 'dual-token' | 'apikey'; // 认证模式
+  apiKey?: string;                   // API密钥
   accessToken?: string;              // 访问令牌
-  authToken?: string;                // 认证令牌
-  apiKey?: string;                   // API 密钥（API Key 模式）
-  tenantId?: string;                 // 租户 ID
-  organizationId?: string;            // 组织 ID
-  platform?: string;                 // 平台标识
-  tokenManager?: AuthTokenManager;    // Token 管理器
-  timeout?: number;                  // 超时时间（默认 30000ms）
-  authMode?: AuthMode;               // 认证模式
+  authToken?: string;               // 认证令牌
+  tokenManager?: AuthTokenManager;   // Token管理器
+  tenantId?: string;                // 租户ID
+  organizationId?: string;           // 组织ID
+  platform?: string;                // 平台标识
+  timeout?: number;                 // 超时时间（默认30000ms）
   headers?: Record<string, string>; // 自定义请求头
-  retry?: Partial<RetryConfig>;      // 重试配置
-  cache?: Partial<CacheConfig>;      // 缓存配置
-  logger?: Partial<LoggerConfig>;    // 日志配置
 }
 ```
 
@@ -418,23 +469,19 @@ interface SdkworkConfig {
 
 | 方法 | 描述 |
 |------|------|
+| `getTokenManager()` | 获取Token管理器 |
+| `setTokenManager(manager)` | 设置Token管理器 |
 | `setAccessToken(token)` | 设置访问令牌 |
 | `setAuthToken(token)` | 设置认证令牌 |
-| `setApiKey(key)` | 设置 API 密钥（切换到 API Key 模式） |
-| `setTokens(accessToken, authToken)` | 批量设置 Token |
-| `clearAuthToken()` | 清除 Token（登出） |
+| `setTokens(tokens)` | 批量设置Token |
+| `getTokens()` | 获取所有Token |
+| `clearAuthToken()` | 清除Token（登出） |
+| `setApiKey(key)` | 设置API密钥 |
+| `setAuthMode(mode)` | 设置认证模式 |
 | `isAuthenticated()` | 检查是否已认证 |
-| `hasAccessToken()` | 检查是否有访问令牌 |
-| `hasAuthToken()` | 检查是否有认证令牌 |
+| `hasAuthToken()` | 检查是否有authToken |
+| `hasAccessToken()` | 检查是否有accessToken |
 | `getAuthMode()` | 获取当前认证模式 |
-| `setTimeout(ms)` | 设置超时时间 |
-
-## 🔐 Token 说明
-
-| Token | 用途 | Header |
-|-------|------|--------|
-| `accessToken` | 设备/服务端标识 | `Access-Token` |
-| `authToken` | 用户认证 | `Authorization: Bearer` |
 
 ## 🌐 环境支持
 
